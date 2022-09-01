@@ -1,0 +1,190 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Movies API
+x-yc-apigateway:
+  service_account_id: ${SERVICE_ACCOUNT_ID}
+
+paths:
+  /movies:
+    post:
+      description: Create movie
+      operationId: createMovie
+      requestBody:
+        description: Movie to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+      responses:
+        '200':
+          description: Created or updated movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        default:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: ${FUNCTION_ID}
+        context:
+          command: PutItem
+          endpoint: ${DATABASE_ENDPOINT}
+          tableName: movie
+    get:
+      description: Get movies
+      operationId: getMovies
+      parameters:
+        - name: from
+          in: query
+          description: Identifier from which will be queried movies in ascending order
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of movies in response
+          required: false
+          schema:
+            type: number
+            default: 10
+      responses:
+        '200':
+          description: Movies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movie'
+        default:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: ${FUNCTION_ID}
+        context:
+          command: Scan
+          endpoint: ${DATABASE_ENDPOINT}
+          tableName: movie
+          limit: '{limit}'
+          exclusiveStartKey: '{"id": "{from}"}'
+  /movies/{movieId}:
+    parameters:
+      - name: movieId
+        in: path
+        description: Identifier of movie
+        required: true
+        schema:
+          type: string
+    get:
+      description: Get movie by id
+      operationId: getMovieById
+      responses:
+        '200':
+          description: Movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        default:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: ${FUNCTION_ID}
+        context:
+          command: GetItem
+          endpoint: ${DATABASE_ENDPOINT}
+          tableName: movie
+          key: '{"id": "{movieId}"}'
+    put:
+      description: Update movie by id
+      operationId: updateMovieById
+      requestBody:
+        description: Movie or attributes to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+      responses:
+        '200':
+          description: Updated movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        default:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: ${FUNCTION_ID}
+        context:
+          command: UpdateItem
+          endpoint: ${DATABASE_ENDPOINT}
+          tableName: movie
+          key: '{"id": "{movieId}"}'
+    delete:
+      description: Delete movie by id
+      operationId: deleteMovieById
+      responses:
+        '200':
+          description: Deleted movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        default:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: ${FUNCTION_ID}
+        context:
+          command: DeleteItem
+          endpoint: ${DATABASE_ENDPOINT}
+          tableName: movie
+          key: '{"id": "{movieId}"}'
+components:
+  schemas:
+    Movie:
+      type: object
+      required:
+        - id
+        - title
+        - year
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        year:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
